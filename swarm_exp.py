@@ -1,4 +1,5 @@
 import asyncio
+import os
 from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.teams import Swarm
 from autogen_ext.models.openai import OpenAIChatCompletionClient
@@ -6,11 +7,13 @@ from autogen_agentchat.messages import HandoffMessage
 from autogen_agentchat.conditions import HandoffTermination, MaxMessageTermination, TextMentionTermination
 from autogen_agentchat.ui import Console
 
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
 async def main():
     model_client = OpenAIChatCompletionClient(
     model="deepseek-chat", 
     base_url="https://api.deepseek.com",
-    api_key="sk-7889909525714fb1b1544a8fd4dcacf2", 
+    api_key=DEEPSEEK_API_KEY, 
     model_info={
         "vision": False,
         "function_calling": True,

@@ -11,7 +11,6 @@ from google.search import search
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
 
-
 model_client = OpenAIChatCompletionClient(model="deepseek-chat", base_url="https://api.deepseek.com",
                                           api_key=DEEPSEEK_API_KEY, model_info={
         "vision": False,
