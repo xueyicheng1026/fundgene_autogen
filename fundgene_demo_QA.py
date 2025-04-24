@@ -8,6 +8,7 @@ from autogen_agentchat.conditions import HandoffTermination, MaxMessageTerminati
 from autogen_agentchat.ui import Console
 from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
 from autogen_ext.agents.web_surfer import MultimodalWebSurfer
+from Console_with_history import *
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
 
@@ -42,18 +43,27 @@ async def main():
     )
 
     # 设置终止条件
-    termination = MaxMessageTermination(8)
+    termination = MaxMessageTermination(4)
 
     # 创建轮询团队
     team = RoundRobinGroupChat(
         participants=[teacher, student],
         termination_condition=termination,
     )
+    
+    _, result = await Console_with_history(
+        stream=team.run_stream(task="人机对话启动"),
+        output_stats=True,
+    )
 
-    await Console(team.run_stream(task="人机对话启动"))
+    chat_history = [item for item in result if item.type == 'TextMessage']
+
+    return chat_history
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    chat_history = asyncio.run(main())
+    for message in chat_history:
+        print(f"{message.source}: {message.content}")
 
 
 
