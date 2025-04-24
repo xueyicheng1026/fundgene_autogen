@@ -1,4 +1,5 @@
 import asyncio
+import os
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
@@ -6,10 +7,12 @@ from autogen_agentchat.conditions import TextMentionTermination
 from autogen_core import CancellationToken
 from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
 
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
+
 model_client = OpenAIChatCompletionClient(
     model="deepseek-chat", 
     base_url="https://api.deepseek.com",
-    api_key="sk-7889909525714fb1b1544a8fd4dcacf2", 
+    api_key=DEEPSEEK_API_KEY, 
     model_info={
         "vision": False,
         "function_calling": True,

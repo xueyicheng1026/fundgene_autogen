@@ -1,4 +1,5 @@
 import asyncio
+import os
 from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.teams import Swarm, RoundRobinGroupChat, SelectorGroupChat
 from autogen_ext.models.openai import OpenAIChatCompletionClient
@@ -8,11 +9,12 @@ from autogen_agentchat.ui import Console
 from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
 from autogen_ext.agents.web_surfer import MultimodalWebSurfer
 
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
 
 model_client = OpenAIChatCompletionClient(
     model="deepseek-chat", 
     base_url="https://api.deepseek.com",
-    api_key="sk-7889909525714fb1b1544a8fd4dcacf2", 
+    api_key=DEEPSEEK_API_KEY, 
     model_info={
         "vision": False,
         "function_calling": True,
@@ -21,47 +23,7 @@ model_client = OpenAIChatCompletionClient(
     }
 )
 
-async def get_tools():
-    tools: dict = {}
-
-    # 这个服务器用于获取网页内容
-    fetch_mcp_server = StdioServerParams(
-        command="uvx", 
-        args=["mcp-server-fetch"], 
-        read_timeout_seconds=10
-    )
-
-    # 这个服务器用于读写本地文件
-    filesystem_mcp_server = StdioServerParams(
-        command="npx", 
-        args=["-y", "@modelcontextprotocol/server-filesystem", "/Users/xueyicheng/Documents/SRTP/autogen/autogen_mcp"], 
-        read_timeout_seconds=10
-    )
-
-    # 这个服务器用于浏览器自动化（截图、网络交互等）
-    puppeteer_mcp_server = StdioServerParams(
-        command="npx", 
-        args=["-y", "@modelcontextprotocol/server-puppeteer"],
-        read_timeout_seconds=20
-    )
-
-    # 从MCP服务器获取fetch工具
-    tools_fetch = await mcp_server_tools(fetch_mcp_server)
-    tools["fetch"] = tools_fetch
-
-    # 从MCP服务器获取filesystem工具
-    tools_filesystem = await mcp_server_tools(filesystem_mcp_server)
-    tools["filesystem"] = tools_filesystem
-
-    # 从MCP服务器获取puppeteer工具
-    tools_puppeteer = await mcp_server_tools(puppeteer_mcp_server)
-    tools["puppeteer"] = tools_puppeteer
-
-    return tools
-
 async def main():
-    # 获取工具
-    tools = await get_tools()
 
     # 创建老师代理
     teacher = AssistantAgent(
