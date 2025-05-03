@@ -1,4 +1,3 @@
-
 async def calculator_tool(expression: str) -> dict:
     """
     执行金融数据分析相关的数学计算，包括基本运算和常用金融公式。
@@ -120,3 +119,258 @@ async def calculator_tool(expression: str) -> dict:
         return {"error": f"未知函数或变量: {str(e)}"}
     except Exception as e:
         return {"error": f"计算错误: {str(e)}"}
+    
+import json
+from collections import defaultdict
+from datetime import datetime
+
+def calculate_portfolio_analysis(investment_data_str):
+    """
+    分析投资记录数据并返回资产配置比例和投资表现分析结果
+    
+    Args:
+        investment_data_str (str): 包含投资记录的JSON字符串，可能包含三引号(''')和语言标记(如json)
+    
+    Returns:
+        str: 格式化的JSON字符串，包含资产配置比例和投资表现分析
+        
+    数据格式说明:
+        输入数据格式:
+        {
+            "user_info": {
+                "user_id": "用户ID",
+                "username": "用户名",
+                "risk_tolerance": "风险承受能力", // 低、中、高
+                "investment_goal": "投资目标",   // 如: 退休规划、教育金等
+                "investment_preference": "投资偏好" // 如: 收入型、成长型等
+            },
+            "investment_records": [
+                {
+                    "behavior_id": "行为ID",
+                    "fund_info": {
+                        "fund_id": "基金ID",
+                        "fund_name": "基金名称",
+                        "fund_code": "基金代码",
+                        "fund_type": "基金类型", // 股票型、债券型、货币市场型等
+                        "risk_level": "风险等级", // 低、中低、中、中高、高
+                        "current_nav": "当前净值" // 数值类型
+                    },
+                    "transaction_info": {
+                        "action_type": "操作类型", // 申购、赎回、定投等
+                        "amount": "交易金额",     // 数值类型
+                        "timestamp": "交易时间",  // 格式: "YYYY-MM-DD HH:MM:SS"
+                        "nav_price": "交易时净值", // 数值类型
+                        "fund_shares": "交易份额", // 数值类型
+                        "platform": "交易平台",   // 如: 银行APP、支付宝等
+                        "transaction_status": "交易状态" // 如: 已确认、处理中等
+                    }
+                }
+            ]
+        }
+        
+        输出数据格式:
+        {
+            "资产配置比例": {
+                "按资产类型": {
+                    "股票": 百分比,
+                    "债券": 百分比,
+                    "现金": 百分比,
+                    "其他": 百分比
+                },
+                "按风险等级": {
+                    "低风险": 百分比,
+                    "中风险": 百分比,
+                    "高风险": 百分比
+                },
+                "按投资平台": {
+                    "平台名称1": 百分比,
+                    "平台名称2": 百分比,
+                    ...
+                },
+                "总资产价值": 数值
+            },
+            "投资表现": {
+                "总收益率": 百分比,
+                "年化收益率": 百分比,
+                "波动率": 百分比
+            }
+        }
+    """
+    # 清理输入字符串中可能的格式标记
+    if isinstance(investment_data_str, str):
+        # 处理三引号标记
+        if investment_data_str.startswith("'''") and investment_data_str.endswith("'''"):
+            investment_data_str = investment_data_str[3:-3]
+        
+        # 处理语言标记（如'json'）
+        lines = investment_data_str.split('\n', 1)
+        if len(lines) > 0 and (lines[0].strip() == 'json' or lines[0].strip() == 'JSON'):
+            investment_data_str = lines[1] if len(lines) > 1 else ""
+    
+    # 确保字符串是有效的JSON
+    try:
+        investment_data_str = investment_data_str.strip()
+        investment_data = json.loads(investment_data_str)
+    except json.JSONDecodeError as e:
+        return json.dumps({"error": f"JSON解析错误: {str(e)}"}, ensure_ascii=False, indent=4)
+    
+    # 获取用户信息和投资记录
+    user_info = investment_data.get("user_info", {})
+    investment_records = investment_data.get("investment_records", [])
+    
+    if not investment_records:
+        return json.dumps({"error": "未找到投资记录"}, ensure_ascii=False, indent=4)
+    
+    # 初始化计算变量
+    total_asset_value = 0.0                       # 总资产价值
+    asset_type_values = defaultdict(float)        # 按资产类型分类的金额
+    risk_level_values = defaultdict(float)        # 按风险等级分类的金额
+    platform_values = defaultdict(float)          # 按投资平台分类的金额
+    earliest_date = datetime.now()                # 最早的交易日期
+    total_initial_investment = 0.0                # 总初始投资金额
+    
+    # 基金类型到资产类型的映射
+    fund_type_to_asset = {
+        "股票型": "股票",
+        "混合型": "股票",
+        "指数型": "股票",
+        "QDII": "其他",
+        "债券型": "债券",
+        "货币市场型": "现金",
+        "ETF": "股票"
+    }
+    
+    # 风险等级映射
+    risk_level_map = {
+        "低": "低风险",
+        "中低": "低风险",
+        "中": "中风险",
+        "中高": "中风险",
+        "高": "高风险"
+    }
+    
+    # 处理每条投资记录
+    for record in investment_records:
+        # 提取基金信息和交易信息
+        fund_info = record.get("fund_info", {})
+        transaction_info = record.get("transaction_info", {})
+        
+        # 安全地提取需要的数值，提供默认值防止数据异常
+        current_nav = float(fund_info.get("current_nav", 0))
+        fund_shares = float(transaction_info.get("fund_shares", 0))
+        
+        # 计算当前持仓价值 (当前净值 * 持有份额)
+        current_value = current_nav * fund_shares
+        total_asset_value += current_value
+        
+        # 按资产类型分类
+        fund_type = fund_info.get("fund_type", "其他")
+        asset_type = fund_type_to_asset.get(fund_type, "其他")
+        asset_type_values[asset_type] += current_value
+        
+        # 按风险等级分类
+        risk_level_raw = fund_info.get("risk_level", "中")
+        risk_level = risk_level_map.get(risk_level_raw, "中风险")
+        risk_level_values[risk_level] += current_value
+        
+        # 按投资平台分类
+        platform = transaction_info.get("platform", "未知平台")
+        platform_values[platform] += current_value
+        
+        # 记录交易日期和初始投资金额
+        try:
+            timestamp = transaction_info.get("timestamp", "")
+            if timestamp:
+                transaction_date = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+                if transaction_date < earliest_date:
+                    earliest_date = transaction_date
+        except ValueError:
+            # 忽略日期格式错误
+            pass
+        
+        # 累计初始投资金额
+        amount = float(transaction_info.get("amount", 0))
+        total_initial_investment += amount
+    
+    # 计算各类资产占比百分比
+    asset_type_percentage = {}
+    risk_level_percentage = {}
+    platform_percentage = {}
+    
+    if total_asset_value > 0:
+        # 按资产类型计算百分比
+        asset_type_percentage = {
+            asset: round(100 * value / total_asset_value)
+            for asset, value in asset_type_values.items()
+        }
+        
+        # 按风险等级计算百分比
+        risk_level_percentage = {
+            level: round(100 * value / total_asset_value)
+            for level, value in risk_level_values.items()
+        }
+        
+        # 按投资平台计算百分比
+        platform_percentage = {
+            platform: round(100 * value / total_asset_value)
+            for platform, value in platform_values.items()
+        }
+    
+    # 确保所有标准资产类型都存在于结果中
+    for asset_type in ["股票", "债券", "现金", "其他"]:
+        if asset_type not in asset_type_percentage:
+            asset_type_percentage[asset_type] = 0
+    
+    # 确保所有风险等级都存在于结果中
+    for risk_level in ["低风险", "中风险", "高风险"]:
+        if risk_level not in risk_level_percentage:
+            risk_level_percentage[risk_level] = 0
+    
+    # 计算投资表现指标
+    # 1. 投资持有时间(天)
+    days_invested = max(1, (datetime.now() - earliest_date).days)
+    
+    # 2. 总收益率 = (当前总价值 - 总投入) / 总投入 * 100%
+    if total_initial_investment > 0:
+        total_return_rate = ((total_asset_value / total_initial_investment) - 1) * 100
+    else:
+        total_return_rate = 0
+    
+    # 3. 年化收益率 = 总收益率 * (365 / 持有天数)
+    annualized_return_rate = total_return_rate * (365 / days_invested)
+    
+    # 4. 波动率 (这里使用简化的计算方法，实际应基于历史净值数据计算标准差)
+    # 由于我们没有足够的历史数据，此处使用预设值或基于风险分布的估算
+    if "高风险" in risk_level_percentage and risk_level_percentage["高风险"] > 50:
+        volatility = 18.5  # 高风险配置的波动率较高
+    elif "低风险" in risk_level_percentage and risk_level_percentage["低风险"] > 50:
+        volatility = 5.8   # 低风险配置的波动率较低
+    else:
+        volatility = 12.3  # 中等风险的默认波动率
+    
+    # 构建结果字典
+    result = {
+        "资产配置比例": {
+            "按资产类型": asset_type_percentage,
+            "按风险等级": risk_level_percentage,
+            "按投资平台": platform_percentage,
+            "总资产价值": round(total_asset_value, 2)
+        },
+        "投资表现": {
+            "总收益率": round(total_return_rate, 1),
+            "年化收益率": round(annualized_return_rate, 1),
+            "波动率": round(volatility, 1)
+        }
+    }
+    
+    # 转换为JSON字符串并返回
+    return json.dumps(result, ensure_ascii=False, indent=4)
+
+# 测试函数
+if __name__ == "__main__":
+    # 可以将示例数据传入函数进行测试
+    with open("example_investment_data.json", "r", encoding="utf-8") as f:
+        example_data = f.read()
+    
+    result = calculate_portfolio_analysis(example_data)
+    print(result)

@@ -2,6 +2,9 @@ import asyncio
 import json
 import os
 import sqlite3
+import sys
+# 添加父目录到Python路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
@@ -9,6 +12,7 @@ from autogen_agentchat.ui import Console
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_ext.tools.mcp import McpWorkbench, StdioServerParams
 from autogen_agentchat.tools import AgentTool
+from utils.extract_messages_content import extract_messages_content
 
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY") 
 
@@ -24,7 +28,7 @@ model_client = OpenAIChatCompletionClient(
     }
 )
 
-async def behavior_analyze() -> None:
+async def behavior_analyze(userid : str) -> str:
     # 数据库文件路径
     db_path = "/Users/xueyicheng/Documents/SRTP/autogen/autogen_mcp/database/behavior/fund_investment.db"
     
@@ -125,7 +129,6 @@ async def behavior_analyze() -> None:
                 请使用精确的SQL查询语言分析数据，并以清晰、专业的方式提供结果，同时给出有深度的分析解读和投资建议。
                 使用适当的统计方法处理分析数据，如均值、中位数、标准差等，以提供全面的投资行为分析。
                 根据分析结果，对用户的投资行为进行分类，若与原来user表中的investment_preference不同就进行更新, 
-                再为用户提供个性化的投资建议和改进方向，可以给出数据库中具体某只基金的投资建议。
                 分析完成后，回复'TERMINATE'以结束会话。
                 """,
                 model_client=model_client,
@@ -142,13 +145,28 @@ async def behavior_analyze() -> None:
             )
             
             # 开始对话
-            print("\n开始基金投资行为分析...")
-            await Console(team.run_stream(task="分析username='用户_1'的投资行为"))
+            # print("\n开始基金投资行为分析...")
+            # await Console(team.run_stream(task=f"分析user_id='{userid}'的投资行为"))
+
+            result = await team.run(task=f"分析user_id='{userid}'的投资行为")
+
+            print(result)
+
+            # 提取分析结果
+            analyze_result = extract_messages_content(
+                result.messages,
+                include_sources=["DBAgent"],
+                include_types=["TextMessage"],
+                join_delimiter="\n"
+            )
+            return analyze_result
     
     finally:
         # 关闭模型客户端资源
         await model_client.close()
 
 if __name__ == "__main__":
-    asyncio.run(behavior_analyze())
+    userid = "8c5373a6-f437-41ee-9830-284399af9893"
+    analyze_result=asyncio.run(behavior_analyze(userid))
+    print(analyze_result)
 
