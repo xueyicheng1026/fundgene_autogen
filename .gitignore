@@ -1,6 +1,7 @@
-./venv
+venv/
 note.txt
 api_key.txt
-./debug
+debug/
 test_serp_api.py
-./__pycache__
+__pycache__/
+.DS_Store
