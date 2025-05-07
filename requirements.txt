@@ -167,3 +167,7 @@ XlsxWriter==3.2.3
 yarl==1.20.0
 youtube-transcript-api==1.0.3
 zipp==3.21.0
+pandas
+python-docx
+tabulate
+matplotlib
